@@ -27,3 +27,18 @@ export function buildSequence({ work, shortBreak, longBreak }) {
 export function workSessionNumber(sequence, segmentIndex) {
   return sequence.slice(0, segmentIndex + 1).filter((s) => s.type === 'work').length
 }
+
+/** Human-readable label for a segment, e.g. "Session 2 of 4", "Short Break", "Long Break". */
+export function segmentLabel(sequence, segmentIndex) {
+  const segment = sequence[segmentIndex]
+  if (segment.type === 'work') return `Session ${workSessionNumber(sequence, segmentIndex)} of ${TOTAL_WORK_SESSIONS}`
+  if (segment.type === 'short_break') return 'Short Break'
+  return 'Long Break'
+}
+
+/** mm:ss for a countdown display. */
+export function formatPomodoroTime(totalSeconds) {
+  const m = Math.floor(totalSeconds / 60)
+  const s = totalSeconds % 60
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
+}

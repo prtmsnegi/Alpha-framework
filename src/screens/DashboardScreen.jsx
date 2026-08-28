@@ -2,7 +2,9 @@ import { Timer, ChevronRight, Sun, Moon } from 'lucide-react'
 import { useTasks } from '../context/TasksContext'
 import { useCompletions } from '../context/CompletionsContext'
 import { useSettings } from '../context/SettingsContext'
+import { usePomodoro } from '../context/PomodoroContext'
 import { FRAMEWORKS, FRAMEWORK_IDS } from '../constants/frameworks'
+import { segmentLabel, formatPomodoroTime } from '../constants/pomodoro'
 import {
   getFrameworkProgress,
   getOverallProgress,
@@ -23,6 +25,7 @@ export function DashboardScreen({ onNavigate }) {
   const { tasks } = useTasks()
   const { completions } = useCompletions()
   const { settings, updateSettings } = useSettings()
+  const { sequence, segmentIndex, secondsLeft, running } = usePomodoro()
   const now = useClock()
 
   const overall = getOverallProgress(tasks, completions)
@@ -125,9 +128,15 @@ export function DashboardScreen({ onNavigate }) {
         </div>
         <div className="flex-1 text-left">
           <p className="text-sm font-semibold text-gray-900 dark:text-gray-50">Pomodoro</p>
-          <p className="text-xs text-gray-400 dark:text-gray-500">
-            4 × {settings.pomodoro_work_minutes} min focus, with breaks
-          </p>
+          {running ? (
+            <p className="text-xs text-violet-500 font-semibold tabular-nums">
+              {segmentLabel(sequence, segmentIndex)} · {formatPomodoroTime(secondsLeft)} left
+            </p>
+          ) : (
+            <p className="text-xs text-gray-400 dark:text-gray-500">
+              4 × {settings.pomodoro_work_minutes} min focus, with breaks
+            </p>
+          )}
         </div>
         <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
       </button>

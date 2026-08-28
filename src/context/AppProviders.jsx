@@ -1,12 +1,15 @@
 import { SettingsProvider } from './SettingsContext'
 import { TasksProvider } from './TasksContext'
 import { CompletionsProvider } from './CompletionsContext'
+import { PomodoroProvider } from './PomodoroContext'
 
 export function AppProviders({ children }) {
   return (
     <SettingsProvider>
       <TasksProvider>
-        <CompletionsProvider>{children}</CompletionsProvider>
+        <CompletionsProvider>
+          <PomodoroProvider>{children}</PomodoroProvider>
+        </CompletionsProvider>
       </TasksProvider>
     </SettingsProvider>
   )

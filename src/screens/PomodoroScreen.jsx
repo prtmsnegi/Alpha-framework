@@ -1,92 +1,50 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { Capacitor } from '@capacitor/core'
 import { Play, Pause, RotateCcw, Settings2 } from 'lucide-react'
-import { useLocalStorage } from '../hooks/useLocalStorage'
 import { useSettings } from '../context/SettingsContext'
+import { usePomodoro } from '../context/PomodoroContext'
 import { ScreenHeader } from '../components/ScreenHeader'
 import { Modal } from '../components/Modal'
-import { buildSequence, TOTAL_WORK_SESSIONS, workSessionNumber } from '../constants/pomodoro'
-import { unlockChime, playChime } from '../utils/chime'
+import { TOTAL_WORK_SESSIONS, workSessionNumber, segmentLabel, formatPomodoroTime } from '../constants/pomodoro'
 
-function formatTime(totalSeconds) {
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`
-}
-
-function segmentLabel(sequence, segmentIndex) {
-  const segment = sequence[segmentIndex]
-  if (segment.type === 'work') return `Session ${workSessionNumber(sequence, segmentIndex)} of ${TOTAL_WORK_SESSIONS}`
-  if (segment.type === 'short_break') return 'Short Break'
-  return 'Long Break'
-}
+const IS_NATIVE = Capacitor.isNativePlatform()
 
 export function PomodoroScreen({ onBack }) {
-  const { settings, updateSettings } = useSettings()
-  const sequence = useMemo(
-    () =>
-      buildSequence({
-        work: settings.pomodoro_work_minutes,
-        shortBreak: settings.pomodoro_short_break_minutes,
-        longBreak: settings.pomodoro_long_break_minutes,
-      }),
-    [settings.pomodoro_work_minutes, settings.pomodoro_short_break_minutes, settings.pomodoro_long_break_minutes],
-  )
-
-  const [segmentIndex, setSegmentIndex] = useState(0)
-  const [secondsLeft, setSecondsLeft] = useState(sequence[0].minutes * 60)
-  const [running, setRunning] = useState(false)
+  const { settings } = useSettings()
+  const { sequence, segmentIndex, secondsLeft, running, toggleRunning, reset, handleCustomizeSave } = usePomodoro()
   const [customizeOpen, setCustomizeOpen] = useState(false)
-  // Session log kept separate from habit completions — Pomodoro never affects Groom/Shred/Style scores.
-  const [, setSessions] = useLocalStorage('alpha:pomodoroSessions', [])
-  const intervalRef = useRef(null)
+  const wakeLockRef = useRef(null)
 
-  // Ticks the countdown. Kept as a pure decrement — no side effects in the updater,
-  // since React (Strict Mode) may invoke a functional updater more than once and any
-  // side effect inside it (like logging a session or playing a chime) would then fire
-  // more than once too.
+  // Keeps the screen from auto-locking while a session is actively being watched here.
+  // Released automatically by the browser the moment the tab/screen goes hidden (a Wake
+  // Lock spec requirement, not something to work around) — re-acquired below whenever
+  // this screen is visible again and still running. Not supported everywhere; fails
+  // silently where it isn't rather than blocking anything.
   useEffect(() => {
-    if (!running) return
-    intervalRef.current = setInterval(() => {
-      setSecondsLeft((prev) => (prev > 0 ? prev - 1 : prev))
-    }, 1000)
-    return () => clearInterval(intervalRef.current)
-  }, [running])
+    if (!running || !('wakeLock' in navigator)) return
 
-  // Reacts to the countdown reaching zero: logs a finished work session, chimes, then
-  // auto-advances into the next segment. A plain effect (not a state updater), so it
-  // runs exactly once per transition.
-  useEffect(() => {
-    if (!running || secondsLeft !== 0) return
-    const finished = sequence[segmentIndex]
-    if (finished.type === 'work') {
-      setSessions((s) => [...s, { completed_at: new Date().toISOString(), duration_minutes: finished.minutes }])
+    let active = true
+    const acquire = async () => {
+      try {
+        wakeLockRef.current = await navigator.wakeLock.request('screen')
+      } catch {
+        // Not available right now (e.g. tab hidden, unsupported) — fine, just no lock.
+      }
     }
-    const nextIndex = (segmentIndex + 1) % sequence.length
-    setSegmentIndex(nextIndex)
-    setSecondsLeft(sequence[nextIndex].minutes * 60)
-    playChime(sequence[nextIndex].type === 'work' ? 'work' : 'break')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [secondsLeft])
+    acquire()
 
-  const reset = () => {
-    setRunning(false)
-    setSegmentIndex(0)
-    setSecondsLeft(sequence[0].minutes * 60)
-  }
+    const onVisible = () => {
+      if (active && document.visibilityState === 'visible' && !wakeLockRef.current) acquire()
+    }
+    document.addEventListener('visibilitychange', onVisible)
 
-  const toggleRunning = () => {
-    unlockChime() // must happen inside a user gesture; safe to call every time
-    setRunning((r) => !r)
-  }
-
-  const handleCustomizeSave = (updates) => {
-    updateSettings(updates)
-    // Apply immediately rather than mid-segment, using the new values directly —
-    // `sequence` above won't reflect `updates` until the next render.
-    setRunning(false)
-    setSegmentIndex(0)
-    setSecondsLeft(updates.pomodoro_work_minutes * 60)
-  }
+    return () => {
+      active = false
+      document.removeEventListener('visibilitychange', onVisible)
+      wakeLockRef.current?.release().catch(() => {})
+      wakeLockRef.current = null
+    }
+  }, [running])
 
   const segment = sequence[segmentIndex]
   const durationSeconds = segment.minutes * 60
@@ -128,7 +86,7 @@ export function PomodoroScreen({ onBack }) {
               fill="none"
             />
           </svg>
-          <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums">{formatTime(secondsLeft)}</p>
+          <p className="text-5xl font-bold text-gray-900 dark:text-gray-50 tabular-nums">{formatPomodoroTime(secondsLeft)}</p>
         </div>
 
         <div className="flex items-center gap-2 mt-6">
@@ -164,6 +122,12 @@ export function PomodoroScreen({ onBack }) {
           </button>
           <div className="w-14 h-14" />
         </div>
+
+        <p className="text-xs text-gray-400 dark:text-gray-500 text-center mt-6 px-4">
+          {IS_NATIVE
+            ? "Keeps running while Alpha is open, even on another screen, and alerts you even if your phone is locked."
+            : "Keeps running while Alpha is open, even on another screen. It can't chime while your phone is fully locked — reopening the app catches it up to the correct time."}
+        </p>
       </div>
 
       {customizeOpen && (

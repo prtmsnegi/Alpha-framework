@@ -43,7 +43,7 @@ function AppShell() {
         )}
 
         {SecondaryScreen && (
-          <div className="fixed inset-0 z-40 bg-gray-50 dark:bg-gray-950 overflow-y-auto">
+          <div className="fixed inset-0 z-50 bg-gray-50 dark:bg-gray-950 overflow-y-auto">
             <div className="max-w-md mx-auto min-h-screen">
               <SecondaryScreen onBack={() => setSecondaryScreen(null)} />
             </div>

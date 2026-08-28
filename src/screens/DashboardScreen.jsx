@@ -11,10 +11,12 @@ import {
   isOverdue,
 } from '../utils/taskProgress'
 import { getCurrentStreak } from '../utils/streaks'
+import { getTrendData } from '../utils/trends'
 import { useClock } from '../hooks/useClock'
 import { formatDisplayDate } from '../utils/dateUtils'
 import { ProgressRing } from '../components/ProgressRing'
 import { ProgressBar } from '../components/ProgressBar'
+import { TrendChart } from '../components/TrendChart'
 import { EmptyState } from '../components/EmptyState'
 
 export function DashboardScreen({ onNavigate }) {
@@ -26,6 +28,7 @@ export function DashboardScreen({ onNavigate }) {
   const overall = getOverallProgress(tasks, completions)
   const weekly = getWeeklyProgress(tasks, completions)
   const streak = getCurrentStreak(tasks, completions)
+  const weekTrend = getTrendData(tasks, completions, 7)
   const { pending, completed } = splitTasksByStatus(tasks, completions)
 
   return (
@@ -99,6 +102,19 @@ export function DashboardScreen({ onNavigate }) {
           <ProgressBar value={weekly.count} max={weekly.target} colorClass="bg-violet-500" />
         </div>
       )}
+
+      <button
+        onClick={() => onNavigate('trends')}
+        className="w-full mt-3 rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 active:bg-gray-50 dark:active:bg-gray-800"
+      >
+        <div className="flex items-center justify-between mb-2">
+          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+            Last 7 Days
+          </p>
+          <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
+        </div>
+        <TrendChart data={weekTrend} height={40} showLabels />
+      </button>
 
       <button
         onClick={() => onNavigate('pomodoro')}

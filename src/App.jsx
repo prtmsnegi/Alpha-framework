@@ -7,6 +7,7 @@ import { GroomScreen } from './screens/GroomScreen'
 import { ShredScreen } from './screens/ShredScreen'
 import { StyleScreen } from './screens/StyleScreen'
 import { PomodoroScreen } from './screens/PomodoroScreen'
+import { TrendsScreen } from './screens/TrendsScreen'
 
 const TABS = {
   dashboard: DashboardScreen,
@@ -17,6 +18,7 @@ const TABS = {
 
 const SECONDARY_SCREENS = {
   pomodoro: PomodoroScreen,
+  trends: TrendsScreen,
 }
 
 function AppShell() {

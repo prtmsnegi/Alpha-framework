@@ -1,4 +1,4 @@
-import { todayStr } from './dateUtils'
+import { todayStr, addDays } from './dateUtils'
 import { getWeekRange } from './weekUtils'
 import { getMonthRange } from './monthUtils'
 
@@ -113,6 +113,41 @@ export function getWeeklyProgress(tasks, completions, date = todayStr()) {
     { count: 0, target: 0 },
   )
   return totals
+}
+
+/** True when a daily/weekly task is "due" on a given day — it existed and is active. */
+function isDayScopedAndDue(task, date) {
+  return (task.frequency_type === 'daily' || task.frequency_type === 'weekly') && task.active && task.created_date <= date
+}
+
+/**
+ * { task, date } for every active daily/weekly task not done on each of the last
+ * `days` days (yesterday back through `days` days ago — not today, which is still in
+ * progress). Lets a forgotten-to-log day be told apart from an actually-skipped one,
+ * by giving the user somewhere to backfill it.
+ */
+export function getMissedInstances(tasks, completions, { days = 3, referenceDate = todayStr() } = {}) {
+  const missed = []
+  for (let i = 1; i <= days; i++) {
+    const date = addDays(referenceDate, -i)
+    for (const task of tasks) {
+      if (!isDayScopedAndDue(task, date)) continue
+      if (!getTaskStatus(task, completions, date).done) missed.push({ task, date })
+    }
+  }
+  return missed
+}
+
+/** Consecutive undone days for a daily/weekly task, walking back from yesterday. */
+export function getConsecutiveMissStreak(task, completions, referenceDate = todayStr()) {
+  if (task.frequency_type !== 'daily' && task.frequency_type !== 'weekly') return 0
+  let streak = 0
+  let cursor = addDays(referenceDate, -1)
+  while (isDayScopedAndDue(task, cursor) && !getTaskStatus(task, completions, cursor).done) {
+    streak++
+    cursor = addDays(cursor, -1)
+  }
+  return streak
 }
 
 /** Sum of counts/targets across all active monthly tasks — mirrors getWeeklyProgress. */

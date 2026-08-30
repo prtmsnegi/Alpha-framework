@@ -1,4 +1,4 @@
-import { Timer, ChevronRight, Sun, Moon } from 'lucide-react'
+import { Timer, ChevronRight, Sun, Moon, AlertTriangle } from 'lucide-react'
 import { useTasks } from '../context/TasksContext'
 import { useCompletions } from '../context/CompletionsContext'
 import { useSettings } from '../context/SettingsContext'
@@ -12,6 +12,7 @@ import {
   getMonthlyProgress,
   splitTasksByStatus,
   isOverdue,
+  getConsecutiveMissStreak,
 } from '../utils/taskProgress'
 import { getCurrentStreak } from '../utils/streaks'
 import { getTrendData } from '../utils/trends'
@@ -35,6 +36,10 @@ export function DashboardScreen({ onNavigate }) {
   const streak = getCurrentStreak(tasks, completions)
   const weekTrend = getTrendData(tasks, completions, 7)
   const { pending, completed } = splitTasksByStatus(tasks, completions)
+  const atRiskTasks = tasks
+    .filter((t) => t.active)
+    .map((t) => ({ task: t, streak: getConsecutiveMissStreak(t, completions) }))
+    .filter(({ streak }) => streak >= 2)
 
   return (
     <div className="pb-28 pt-[env(safe-area-inset-top)] px-4">
@@ -70,6 +75,22 @@ export function DashboardScreen({ onNavigate }) {
         </div>
         <ProgressRing value={overall.done} max={overall.total || 1} colorClass="text-violet-500" />
       </div>
+
+      {atRiskTasks.length > 0 && (
+        <div className="rounded-2xl bg-red-50 dark:bg-red-500/10 border border-red-100 dark:border-red-500/20 p-4 mt-3">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <AlertTriangle size={14} className="text-red-500" />
+            <p className="text-xs font-semibold text-red-500 uppercase tracking-wide">Needs Attention</p>
+          </div>
+          <div className="space-y-1">
+            {atRiskTasks.map(({ task, streak }) => (
+              <p key={task.id} className="text-sm text-gray-700 dark:text-gray-200">
+                <span className="font-semibold">{task.name}</span> — missed {streak} days running
+              </p>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="grid grid-cols-3 gap-2.5 mt-3">
         {FRAMEWORK_IDS.map((id) => {

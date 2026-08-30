@@ -9,6 +9,7 @@ import {
   getFrameworkProgress,
   getOverallProgress,
   getWeeklyProgress,
+  getMonthlyProgress,
   splitTasksByStatus,
   isOverdue,
 } from '../utils/taskProgress'
@@ -30,6 +31,7 @@ export function DashboardScreen({ onNavigate }) {
 
   const overall = getOverallProgress(tasks, completions)
   const weekly = getWeeklyProgress(tasks, completions)
+  const monthly = getMonthlyProgress(tasks, completions)
   const streak = getCurrentStreak(tasks, completions)
   const weekTrend = getTrendData(tasks, completions, 7)
   const { pending, completed } = splitTasksByStatus(tasks, completions)
@@ -103,6 +105,20 @@ export function DashboardScreen({ onNavigate }) {
             </p>
           </div>
           <ProgressBar value={weekly.count} max={weekly.target} colorClass="bg-violet-500" />
+        </div>
+      )}
+
+      {monthly.target > 0 && (
+        <div className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4 mt-3">
+          <div className="flex items-center justify-between mb-1.5">
+            <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide">
+              Monthly Progress
+            </p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-gray-400">
+              {monthly.count}/{monthly.target}
+            </p>
+          </div>
+          <ProgressBar value={monthly.count} max={monthly.target} colorClass="bg-violet-500" />
         </div>
       )}
 

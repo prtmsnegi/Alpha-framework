@@ -27,9 +27,9 @@ export function CompletionsProvider({ children }) {
     removeLastMatching((c) => c.task_id === taskId && c.date === date)
   }
 
-  // Removes the most recently logged completion for this task anywhere within a
-  // date range — used to undo a weekly task's most recent tap, regardless of
-  // which day in the week it was logged on.
+  // Removes the most recently logged completion for this task anywhere within a date
+  // range — used to undo a monthly task's most recent tap, regardless of which day
+  // in the month it was logged on (a monthly target isn't tied to any single day).
   const removeLastCompletionInRange = (taskId, startDate, endDate) => {
     removeLastMatching((c) => c.task_id === taskId && c.date >= startDate && c.date <= endDate)
   }

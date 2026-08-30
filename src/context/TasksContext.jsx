@@ -16,6 +16,7 @@ export function TasksProvider({ children }) {
       target_frequency: frequency_type === 'once' ? 1 : Number(target_frequency) || 1,
       due_date: frequency_type === 'once' ? due_date : null,
       created_date: todayStr(),
+      sort_order: Date.now(),
       active: true,
     }
     setTasks((prev) => [...prev, task])
@@ -32,11 +33,27 @@ export function TasksProvider({ children }) {
     setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, active: false } : t)))
   }
 
+  // Rewrites sort_order for exactly this framework's tasks to match orderedIds' order —
+  // used after a drag-reorder. Tasks in other frameworks are untouched.
+  const reorderTasks = (framework, orderedIds) => {
+    setTasks((prev) =>
+      prev.map((t) => {
+        if (t.framework !== framework) return t
+        const index = orderedIds.indexOf(t.id)
+        return index === -1 ? t : { ...t, sort_order: index }
+      }),
+    )
+  }
+
   const getTasksByFramework = (framework) =>
-    tasks.filter((t) => t.framework === framework && t.active)
+    tasks
+      .filter((t) => t.framework === framework && t.active)
+      .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
 
   return (
-    <TasksContext.Provider value={{ tasks, addTask, updateTask, deleteTask, getTasksByFramework }}>
+    <TasksContext.Provider
+      value={{ tasks, addTask, updateTask, deleteTask, reorderTasks, getTasksByFramework }}
+    >
       {children}
     </TasksContext.Provider>
   )

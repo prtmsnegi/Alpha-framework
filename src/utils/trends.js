@@ -2,16 +2,18 @@ import { todayStr, addDays } from './dateUtils'
 import { getTaskStatus } from './taskProgress'
 
 /**
- * Daily accomplishment for one date: fraction of recurring (daily/weekly) tasks that
- * existed by that date and were done as of that date. One-time (due-date) tasks are
- * excluded — they have no daily cadence, and would otherwise show as "not done" on
- * every day between creation and completion, even before they're actually due.
+ * Daily accomplishment for one date: fraction of recurring daily/weekly tasks that
+ * existed by that date and were done as of that date. One-time (due-date) and monthly
+ * tasks are excluded — neither is naturally day-scoped, and would otherwise show as
+ * "not done" on every day before they're actually due/complete-able.
  *
  * Uses `created_date`, not `active` — a later soft-deleted task shouldn't disappear
  * from the days when it was genuinely being tracked.
  */
 export function getDailyAccomplishment(tasks, completions, date) {
-  const eligible = tasks.filter((t) => t.frequency_type !== 'once' && t.created_date <= date)
+  const eligible = tasks.filter(
+    (t) => (t.frequency_type === 'daily' || t.frequency_type === 'weekly') && t.created_date <= date,
+  )
   if (eligible.length === 0) return null
   const done = eligible.filter((t) => getTaskStatus(t, completions, date).done).length
   return { date, done, total: eligible.length, pct: done / eligible.length }

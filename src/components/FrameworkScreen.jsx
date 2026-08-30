@@ -11,9 +11,6 @@ import { MissedActivityRow } from './MissedActivityRow'
 import { AddEditTaskModal } from './AddEditTaskModal'
 import { EmptyState } from './EmptyState'
 
-const PRESS_HOLD_MS = 400
-const MOVE_CANCEL_THRESHOLD = 10
-
 function reorderArray(arr, fromIndex, toIndex) {
   const copy = [...arr]
   const [item] = copy.splice(fromIndex, 1)
@@ -41,72 +38,53 @@ export function FrameworkScreen({ framework, children }) {
     ({ task, date }) => !dismissedMisses.some((d) => d.task_id === task.id && d.date === date),
   )
 
-  // Long-press-to-drag: `drag` (non-null only once armed) holds the dragged task id and
+  // Drag-to-reorder: `drag` (non-null only while dragging) holds the dragged task id and
   // the live, possibly-reordered id sequence, committed via reorderTasks on release.
-  // `pressRef` tracks the pending hold-timer before it arms — a real drag never starts
-  // from a quick tap, and moving far enough before the hold fires cancels it as a scroll.
+  // Arms immediately on the handle's pointerdown — no hold timer — since it's a
+  // dedicated handle, not a shared tap/scroll zone.
   const [drag, setDrag] = useState(null)
-  const pressRef = useRef(null)
   const itemRefs = useRef({})
 
   const displayTasks = drag ? drag.orderIds.map((id) => tasks.find((t) => t.id === id)).filter(Boolean) : tasks
 
-  const clearPressTimer = () => {
-    if (pressRef.current?.timerId) clearTimeout(pressRef.current.timerId)
-    pressRef.current = null
-  }
-
-  const handleZonePointerDown = (e, taskId) => {
-    const { clientX, clientY, pointerId, currentTarget } = e
-    clearPressTimer()
-    const timerId = setTimeout(() => {
-      try {
-        currentTarget.setPointerCapture(pointerId)
-      } catch {
-        // Fine either way — reorder still works via normal event bubbling.
-      }
-      setDrag({ id: taskId, orderIds: tasks.map((t) => t.id) })
-    }, PRESS_HOLD_MS)
-    pressRef.current = { startX: clientX, startY: clientY, timerId }
-  }
-
-  const handleZonePointerMove = (e) => {
-    if (drag) {
-      const pointerY = e.clientY
-      let closestIndex = 0
-      let closestDistance = Infinity
-      drag.orderIds.forEach((id, index) => {
-        const el = itemRefs.current[id]
-        if (!el) return
-        const rect = el.getBoundingClientRect()
-        const distance = Math.abs(pointerY - (rect.top + rect.height / 2))
-        if (distance < closestDistance) {
-          closestDistance = distance
-          closestIndex = index
-        }
-      })
-      const currentIndex = drag.orderIds.indexOf(drag.id)
-      if (closestIndex !== currentIndex) {
-        setDrag({ ...drag, orderIds: reorderArray(drag.orderIds, currentIndex, closestIndex) })
-      }
-      return
+  const handlePointerDown = (e, taskId) => {
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId)
+    } catch {
+      // Fine either way — reorder still works via normal event bubbling.
     }
-    if (!pressRef.current) return
-    const dx = e.clientX - pressRef.current.startX
-    const dy = e.clientY - pressRef.current.startY
-    if (Math.hypot(dx, dy) > MOVE_CANCEL_THRESHOLD) clearPressTimer()
+    setDrag({ id: taskId, orderIds: tasks.map((t) => t.id) })
   }
 
-  const handleZonePointerUp = () => {
-    clearPressTimer()
+  const handlePointerMove = (e) => {
+    if (!drag) return
+    const pointerY = e.clientY
+    let closestIndex = 0
+    let closestDistance = Infinity
+    drag.orderIds.forEach((id, index) => {
+      const el = itemRefs.current[id]
+      if (!el) return
+      const rect = el.getBoundingClientRect()
+      const distance = Math.abs(pointerY - (rect.top + rect.height / 2))
+      if (distance < closestDistance) {
+        closestDistance = distance
+        closestIndex = index
+      }
+    })
+    const currentIndex = drag.orderIds.indexOf(drag.id)
+    if (closestIndex !== currentIndex) {
+      setDrag({ ...drag, orderIds: reorderArray(drag.orderIds, currentIndex, closestIndex) })
+    }
+  }
+
+  const handlePointerUp = () => {
     if (drag) {
       reorderTasks(framework, drag.orderIds)
       setDrag(null)
     }
   }
 
-  const handleZonePointerCancel = () => {
-    clearPressTimer()
+  const handlePointerCancel = () => {
     setDrag(null)
   }
 
@@ -169,11 +147,11 @@ export function FrameworkScreen({ framework, children }) {
                   onRemove={handleRemove}
                   onEdit={() => setModalTask(task)}
                   onDelete={() => handleDelete(task)}
-                  dragZoneProps={{
-                    onPointerDown: (e) => handleZonePointerDown(e, task.id),
-                    onPointerMove: handleZonePointerMove,
-                    onPointerUp: handleZonePointerUp,
-                    onPointerCancel: handleZonePointerCancel,
+                  dragHandleProps={{
+                    onPointerDown: (e) => handlePointerDown(e, task.id),
+                    onPointerMove: handlePointerMove,
+                    onPointerUp: handlePointerUp,
+                    onPointerCancel: handlePointerCancel,
                   }}
                 />
               </div>

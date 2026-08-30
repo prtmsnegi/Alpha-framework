@@ -1,4 +1,4 @@
-import { Check, Pencil, Trash2, Minus, Plus } from 'lucide-react'
+import { Check, Pencil, Trash2, Minus, Plus, GripVertical } from 'lucide-react'
 import { FRAMEWORKS } from '../constants/frameworks'
 import { formatDisplayDate } from '../utils/dateUtils'
 
@@ -8,9 +8,9 @@ const WINDOW_LABEL = { daily: 'today', weekly: 'this week', monthly: 'this month
  * Shared task row used by Groom, Shred, and Style — the "one task-management engine"
  * every framework screen renders. Single compact row: a leading checkbox for
  * daily/weekly/once/interval (tap adds when not done, undoes the most recent when done —
- * the same model weekly already used), name + count/due-date text, then edit/delete.
- * Monthly has no natural per-day checkbox, so it keeps a distinct +1/undo pair instead,
- * placed alongside edit/delete rather than a leading checkbox.
+ * the same model weekly already used), name + count/due-date text, then a drag handle
+ * grouped with edit/delete. Monthly has no natural per-day checkbox, so it keeps a
+ * distinct +1/undo pair instead, placed alongside the same cluster.
  */
 export function TaskCard({
   task,
@@ -25,7 +25,7 @@ export function TaskCard({
   onRemove,
   onEdit,
   onDelete,
-  dragZoneProps,
+  dragHandleProps,
 }) {
   const accent = FRAMEWORKS[task.framework]
   const isMonthly = task.frequency_type === 'monthly'
@@ -68,11 +68,7 @@ export function TaskCard({
         </button>
       )}
 
-      <div
-        {...dragZoneProps}
-        style={{ WebkitTouchCallout: 'none' }}
-        className={`flex-1 min-w-0 flex items-baseline gap-1.5 select-none touch-pan-y ${isDragging ? 'touch-none' : ''}`}
-      >
+      <div className="flex-1 min-w-0 flex items-baseline gap-1.5">
         <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">{task.name}</p>
         <p className={`text-xs shrink-0 ${infoColor}`}>{infoText}</p>
       </div>
@@ -99,6 +95,13 @@ export function TaskCard({
       )}
 
       <div className="flex items-center shrink-0">
+        <button
+          {...dragHandleProps}
+          aria-label={`Reorder ${task.name}`}
+          className="p-2 rounded-full text-gray-300 dark:text-gray-600 touch-none cursor-grab active:cursor-grabbing"
+        >
+          <GripVertical size={22} />
+        </button>
         <button
           onClick={onEdit}
           className="p-1 rounded-full text-gray-300 dark:text-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800"

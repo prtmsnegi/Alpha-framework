@@ -8,9 +8,21 @@ export function AddEditTaskModal({ framework, task, onSave, onClose }) {
   const [frequencyType, setFrequencyType] = useState(task?.frequency_type ?? 'daily')
   const [targetFrequency, setTargetFrequency] = useState(String(task?.target_frequency ?? 1))
   const [dueDate, setDueDate] = useState(task?.due_date ?? todayStr())
+  const [intervalUnit, setIntervalUnit] = useState(
+    task?.interval_days && task.interval_days % 7 === 0 ? 'weeks' : 'days',
+  )
+  const [intervalNumber, setIntervalNumber] = useState(() => {
+    if (!task?.interval_days) return '1'
+    return String(task.interval_days % 7 === 0 ? task.interval_days / 7 : task.interval_days)
+  })
 
   const isOnce = frequencyType === 'once'
-  const canSave = name.trim().length > 0 && (isOnce ? Boolean(dueDate) : Number(targetFrequency) > 0)
+  const isInterval = frequencyType === 'interval'
+  const intervalDays = intervalUnit === 'weeks' ? Number(intervalNumber) * 7 : Number(intervalNumber)
+
+  const canSave =
+    name.trim().length > 0 &&
+    (isOnce ? Boolean(dueDate) : isInterval ? intervalDays > 0 : Number(targetFrequency) > 0)
 
   const handleSave = () => {
     if (!canSave) return
@@ -20,6 +32,7 @@ export function AddEditTaskModal({ framework, task, onSave, onClose }) {
       frequency_type: frequencyType,
       target_frequency: Number(targetFrequency),
       due_date: dueDate,
+      interval_days: intervalDays,
     })
     onClose()
   }
@@ -43,6 +56,39 @@ export function AddEditTaskModal({ framework, task, onSave, onClose }) {
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Due Date</label>
               <input className="input" type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Frequency</label>
+              <select className="input" value={frequencyType} onChange={(e) => setFrequencyType(e.target.value)}>
+                {FREQUENCY_TYPES.map((f) => (
+                  <option key={f.id} value={f.id}>
+                    {f.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        ) : isInterval ? (
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Every</label>
+              <div className="flex gap-1.5">
+                <input
+                  className="input"
+                  type="number"
+                  min="1"
+                  value={intervalNumber}
+                  onChange={(e) => setIntervalNumber(e.target.value)}
+                />
+                <select
+                  className="input"
+                  value={intervalUnit}
+                  onChange={(e) => setIntervalUnit(e.target.value)}
+                >
+                  <option value="days">days</option>
+                  <option value="weeks">weeks</option>
+                </select>
+              </div>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Frequency</label>

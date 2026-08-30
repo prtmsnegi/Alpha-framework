@@ -48,10 +48,32 @@ export function getTaskStatus(task, completions, date = todayStr()) {
   return { count, target, done: count >= target }
 }
 
-/** True when a one-time task's due date has passed and it still isn't done. */
+/**
+ * Rolling due date for a custom-interval task, as of `date`: most recent completion
+ * *strictly before* `date` + interval_days, or created_date if none — so a brand-new
+ * interval task is due immediately, starting its own cycle. Anchoring on completions
+ * before `date` (not through `date`) matters: a completion logged ON `date` should make
+ * that date read as "done," not retroactively push the due date past `date` and make the
+ * task vanish from that same day's tally. To see the *next* due date after today's own
+ * completion (e.g. for a "Next: <date>" display), call with `addDays(todayStr(), 1)`.
+ */
+export function getIntervalDueDate(task, completions, date = todayStr()) {
+  const dates = completions.filter((c) => c.task_id === task.id && c.date < date).map((c) => c.date)
+  const lastCompleted = dates.length ? dates.sort().at(-1) : null
+  return lastCompleted ? addDays(lastCompleted, task.interval_days) : task.created_date
+}
+
+/** True when a one-time or custom-interval task's due date has passed and it still isn't done. */
 export function isOverdue(task, completions, date = todayStr()) {
-  if (task.frequency_type !== 'once' || !task.due_date) return false
-  return date > task.due_date && !getTaskStatus(task, completions, date).done
+  if (task.frequency_type === 'once') {
+    if (!task.due_date) return false
+    return date > task.due_date && !getTaskStatus(task, completions, date).done
+  }
+  if (task.frequency_type === 'interval') {
+    const dueDate = getIntervalDueDate(task, completions, date)
+    return date > dueDate && !getTaskStatus(task, completions, date).done
+  }
+  return false
 }
 
 /**
@@ -68,36 +90,25 @@ export function isWeeklyUrgent(task, completions, date = todayStr()) {
 }
 
 /** True when a task should count toward today's dashboard progress/pending lists. */
-function isActiveForDate(task, date) {
+function isActiveForDate(task, completions, date) {
   if (!task.active) return false
   if (task.frequency_type === 'once') return Boolean(task.due_date) && task.due_date <= date
+  if (task.frequency_type === 'interval') return getIntervalDueDate(task, completions, date) <= date
   return true
 }
 
 /** { done, total } active tasks for a framework, resolved as of the given date. */
 export function getFrameworkProgress(tasks, completions, framework, date = todayStr()) {
-  const frameworkTasks = tasks.filter((t) => t.framework === framework && isActiveForDate(t, date))
+  const frameworkTasks = tasks.filter((t) => t.framework === framework && isActiveForDate(t, completions, date))
   const done = frameworkTasks.filter((t) => getTaskStatus(t, completions, date).done).length
   return { done, total: frameworkTasks.length }
 }
 
 /** { done, total } across all active tasks, resolved as of the given date. */
 export function getOverallProgress(tasks, completions, date = todayStr()) {
-  const activeTasks = tasks.filter((t) => isActiveForDate(t, date))
+  const activeTasks = tasks.filter((t) => isActiveForDate(t, completions, date))
   const done = activeTasks.filter((t) => getTaskStatus(t, completions, date).done).length
   return { done, total: activeTasks.length }
-}
-
-/** Split active tasks into pending vs. completed as of the given date. */
-export function splitTasksByStatus(tasks, completions, date = todayStr()) {
-  const activeTasks = tasks.filter((t) => isActiveForDate(t, date))
-  const pending = []
-  const completed = []
-  for (const task of activeTasks) {
-    const status = getTaskStatus(task, completions, date)
-    ;(status.done ? completed : pending).push({ task, status })
-  }
-  return { pending, completed }
 }
 
 /** Sum of counts/targets across all active weekly tasks — a simple weekly-progress figure. */

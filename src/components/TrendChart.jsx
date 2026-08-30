@@ -7,13 +7,21 @@ function barColorClass(pct) {
   return 'bg-red-400'
 }
 
+const COUNT_LABEL_HEIGHT = 14
+
 /** Simple hand-rolled bar chart: one bar per entry from getTrendData(). */
-export function TrendChart({ data, height = 56, showLabels = false }) {
+export function TrendChart({ data, height = 56, showLabels = false, showCounts = false }) {
+  const chartHeight = showCounts ? height + COUNT_LABEL_HEIGHT : height
   return (
     <div>
-      <div className="flex items-end gap-1" style={{ height }}>
+      <div className="flex items-end gap-1" style={{ height: chartHeight }}>
         {data.map((d) => (
-          <div key={d.date} className="flex-1 h-full flex items-end">
+          <div key={d.date} className="flex-1 h-full flex flex-col items-center justify-end">
+            {showCounts && (
+              <p className="text-[9px] leading-none text-gray-400 dark:text-gray-500 mb-0.5 tabular-nums">
+                {d.pct === null ? '' : `${d.done}/${d.total}`}
+              </p>
+            )}
             <div
               className={`w-full rounded-sm ${barColorClass(d.pct)}`}
               style={{ height: d.pct === null ? 4 : Math.max(4, d.pct * height) }}

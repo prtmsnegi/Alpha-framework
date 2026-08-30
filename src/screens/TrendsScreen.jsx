@@ -44,7 +44,7 @@ export function TrendsScreen({ onBack }) {
               className="rounded-2xl bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 p-4"
             >
               <p className={`text-xs font-semibold uppercase tracking-wide mb-2 ${accent.text}`}>{accent.label}</p>
-              <TrendChart data={trend} height={40} showLabels />
+              <TrendChart data={trend} height={40} showLabels showCounts />
             </div>
           )
         })}

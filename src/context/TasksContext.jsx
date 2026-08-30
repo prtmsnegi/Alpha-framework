@@ -7,14 +7,16 @@ const TasksContext = createContext(null)
 export function TasksProvider({ children }) {
   const [tasks, setTasks] = useLocalStorage('alpha:tasks', [])
 
-  const addTask = ({ name, framework, frequency_type, target_frequency, due_date }) => {
+  const addTask = ({ name, framework, frequency_type, target_frequency, due_date, interval_days }) => {
+    const isOnceOrInterval = frequency_type === 'once' || frequency_type === 'interval'
     const task = {
       id: crypto.randomUUID(),
       name,
       framework,
       frequency_type,
-      target_frequency: frequency_type === 'once' ? 1 : Number(target_frequency) || 1,
+      target_frequency: isOnceOrInterval ? 1 : Number(target_frequency) || 1,
       due_date: frequency_type === 'once' ? due_date : null,
+      interval_days: frequency_type === 'interval' ? Number(interval_days) || 1 : null,
       created_date: todayStr(),
       sort_order: Date.now(),
       active: true,

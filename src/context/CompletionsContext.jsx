@@ -6,6 +6,9 @@ const CompletionsContext = createContext(null)
 
 export function CompletionsProvider({ children }) {
   const [completions, setCompletions] = useLocalStorage('alpha:completions', [])
+  // Not a completion — just "stop asking about this specific missed day." Doesn't
+  // affect counts, trends, or streaks, purely filters the Missed section's list.
+  const [dismissedMisses, setDismissedMisses] = useLocalStorage('alpha:dismissedMisses', [])
 
   const addCompletion = (taskId, date = todayStr()) => {
     const entry = { id: crypto.randomUUID(), task_id: taskId, date, timestamp: new Date().toISOString() }
@@ -44,6 +47,10 @@ export function CompletionsProvider({ children }) {
     setCompletions((prev) => prev.filter((c) => c.task_id !== taskId))
   }
 
+  const dismissMiss = (taskId, date) => {
+    setDismissedMisses((prev) => [...prev, { task_id: taskId, date }])
+  }
+
   return (
     <CompletionsContext.Provider
       value={{
@@ -53,6 +60,8 @@ export function CompletionsProvider({ children }) {
         removeLastCompletionInRange,
         removeLastCompletionEver,
         removeCompletionsForTask,
+        dismissedMisses,
+        dismissMiss,
       }}
     >
       {children}

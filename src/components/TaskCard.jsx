@@ -7,8 +7,8 @@ const WINDOW_LABEL = { daily: 'today', weekly: 'this week', monthly: 'this month
 /**
  * Shared task row used by Groom, Shred, and Style — the "one task-management engine"
  * every framework screen renders. Single compact row: a leading checkbox for
- * daily/weekly/once (tap adds when not done, undoes the most recent when done — the
- * same model weekly already used), name + count/due-date text, then edit/delete.
+ * daily/weekly/once/interval (tap adds when not done, undoes the most recent when done —
+ * the same model weekly already used), name + count/due-date text, then edit/delete.
  * Monthly has no natural per-day checkbox, so it keeps a distinct +1/undo pair instead,
  * placed alongside edit/delete rather than a leading checkbox.
  */
@@ -19,6 +19,7 @@ export function TaskCard({
   done,
   overdue,
   urgent,
+  dueDate,
   isDragging,
   onAdd,
   onRemove,
@@ -29,19 +30,23 @@ export function TaskCard({
   const accent = FRAMEWORKS[task.framework]
   const isMonthly = task.frequency_type === 'monthly'
   const isOnce = task.frequency_type === 'once'
+  const isInterval = task.frequency_type === 'interval'
+  const isDueDateStyle = isOnce || isInterval
 
-  const infoText = isOnce
+  const infoText = isDueDateStyle
     ? done
-      ? 'Completed'
+      ? isInterval
+        ? `Next: ${formatDisplayDate(dueDate)}`
+        : 'Completed'
       : overdue
-        ? `Overdue ${formatDisplayDate(task.due_date)}`
-        : `Due ${formatDisplayDate(task.due_date)}`
+        ? `Overdue ${formatDisplayDate(dueDate)}`
+        : `Due ${formatDisplayDate(dueDate)}`
     : `${count}/${target} ${WINDOW_LABEL[task.frequency_type]}`
 
   const infoColor =
-    isOnce && overdue
+    isDueDateStyle && overdue
       ? 'text-red-500 font-semibold'
-      : !isMonthly && !isOnce && urgent && !done
+      : !isMonthly && !isDueDateStyle && urgent && !done
         ? 'text-amber-500 font-semibold'
         : 'text-gray-400 dark:text-gray-500'
 
@@ -65,7 +70,8 @@ export function TaskCard({
 
       <div
         {...dragZoneProps}
-        className={`flex-1 min-w-0 flex items-baseline gap-1.5 touch-pan-y ${isDragging ? 'touch-none' : ''}`}
+        style={{ WebkitTouchCallout: 'none' }}
+        className={`flex-1 min-w-0 flex items-baseline gap-1.5 select-none touch-pan-y ${isDragging ? 'touch-none' : ''}`}
       >
         <p className="text-sm font-medium text-gray-900 dark:text-gray-50 truncate">{task.name}</p>
         <p className={`text-xs shrink-0 ${infoColor}`}>{infoText}</p>

@@ -10,18 +10,14 @@ import {
   getOverallProgress,
   getWeeklyProgress,
   getMonthlyProgress,
-  splitTasksByStatus,
-  isOverdue,
   getConsecutiveMissStreak,
 } from '../utils/taskProgress'
 import { getCurrentStreak } from '../utils/streaks'
 import { getTrendData } from '../utils/trends'
 import { useClock } from '../hooks/useClock'
-import { formatDisplayDate } from '../utils/dateUtils'
 import { ProgressRing } from '../components/ProgressRing'
 import { ProgressBar } from '../components/ProgressBar'
 import { TrendChart } from '../components/TrendChart'
-import { EmptyState } from '../components/EmptyState'
 
 export function DashboardScreen({ onNavigate }) {
   const { tasks } = useTasks()
@@ -35,7 +31,6 @@ export function DashboardScreen({ onNavigate }) {
   const monthly = getMonthlyProgress(tasks, completions)
   const streak = getCurrentStreak(tasks, completions)
   const weekTrend = getTrendData(tasks, completions, 7)
-  const { pending, completed } = splitTasksByStatus(tasks, completions)
   const atRiskTasks = tasks
     .filter((t) => t.active)
     .map((t) => ({ task: t, streak: getConsecutiveMissStreak(t, completions) }))
@@ -153,7 +148,7 @@ export function DashboardScreen({ onNavigate }) {
           </p>
           <ChevronRight size={16} className="text-gray-300 dark:text-gray-600" />
         </div>
-        <TrendChart data={weekTrend} height={40} showLabels />
+        <TrendChart data={weekTrend} height={40} showLabels showCounts />
       </button>
 
       <button
@@ -177,59 +172,6 @@ export function DashboardScreen({ onNavigate }) {
         </div>
         <ChevronRight size={18} className="text-gray-300 dark:text-gray-600" />
       </button>
-
-      <div className="mt-5">
-        <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
-          Pending ({pending.length})
-        </p>
-        {pending.length === 0 ? (
-          <EmptyState title="Nothing pending" subtitle="You're all caught up for now" />
-        ) : (
-          <div className="space-y-2">
-            {pending.map(({ task, status }) => (
-              <TaskRow key={task.id} task={task} status={status} overdue={isOverdue(task, completions)} />
-            ))}
-          </div>
-        )}
-      </div>
-
-      {completed.length > 0 && (
-        <div className="mt-5">
-          <p className="text-xs font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide mb-2">
-            Completed ({completed.length})
-          </p>
-          <div className="space-y-2">
-            {completed.map(({ task, status }) => (
-              <TaskRow key={task.id} task={task} status={status} muted />
-            ))}
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-function TaskRow({ task, status, muted, overdue }) {
-  const accent = FRAMEWORKS[task.framework]
-  return (
-    <div
-      className={`rounded-xl border border-gray-100 dark:border-gray-800 px-3.5 py-2.5 flex items-center justify-between ${
-        muted ? 'bg-gray-50 dark:bg-gray-900/50 opacity-60' : 'bg-white dark:bg-gray-900'
-      }`}
-    >
-      <div className="flex items-center gap-2 min-w-0">
-        <span className={`w-2 h-2 rounded-full shrink-0 ${accent.bg}`} />
-        <p className="text-sm text-gray-800 dark:text-gray-100 truncate">{task.name}</p>
-      </div>
-      {task.frequency_type === 'once' ? (
-        <p className={`text-xs shrink-0 ${overdue ? 'text-red-500 font-semibold' : 'text-gray-400'}`}>
-          {overdue ? `Overdue: ${formatDisplayDate(task.due_date)}` : `Due ${formatDisplayDate(task.due_date)}`}
-        </p>
-      ) : (
-        <p className="text-xs text-gray-400 shrink-0">
-          {status.count}/{status.target}
-        </p>
-      )}
     </div>
   )
 }

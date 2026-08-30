@@ -3,8 +3,8 @@ import { Plus } from 'lucide-react'
 import { useTasks } from '../context/TasksContext'
 import { useCompletions } from '../context/CompletionsContext'
 import { FRAMEWORKS } from '../constants/frameworks'
-import { getTaskStatus, isOverdue, isWeeklyUrgent, getMissedInstances } from '../utils/taskProgress'
-import { todayStr } from '../utils/dateUtils'
+import { getTaskStatus, isOverdue, isWeeklyUrgent, getMissedInstances, getIntervalDueDate } from '../utils/taskProgress'
+import { todayStr, addDays } from '../utils/dateUtils'
 import { getMonthRange } from '../utils/monthUtils'
 import { TaskCard } from './TaskCard'
 import { MissedActivityRow } from './MissedActivityRow'
@@ -25,12 +25,21 @@ function reorderArray(arr, fromIndex, toIndex) {
 export function FrameworkScreen({ framework, children }) {
   const accent = FRAMEWORKS[framework]
   const { getTasksByFramework, addTask, updateTask, deleteTask, reorderTasks } = useTasks()
-  const { completions, addCompletion, removeLastCompletion, removeLastCompletionInRange, removeLastCompletionEver } =
-    useCompletions()
+  const {
+    completions,
+    addCompletion,
+    removeLastCompletion,
+    removeLastCompletionInRange,
+    removeLastCompletionEver,
+    dismissedMisses,
+    dismissMiss,
+  } = useCompletions()
   const [modalTask, setModalTask] = useState(undefined) // undefined = closed, null = new, task = edit
 
   const tasks = getTasksByFramework(framework)
-  const missedInstances = getMissedInstances(tasks, completions)
+  const missedInstances = getMissedInstances(tasks, completions).filter(
+    ({ task, date }) => !dismissedMisses.some((d) => d.task_id === task.id && d.date === date),
+  )
 
   // Long-press-to-drag: `drag` (non-null only once armed) holds the dragged task id and
   // the live, possibly-reordered id sequence, committed via reorderTasks on release.
@@ -129,6 +138,12 @@ export function FrameworkScreen({ framework, children }) {
         ) : (
           displayTasks.map((task) => {
             const status = getTaskStatus(task, completions)
+            const dueDate =
+              task.frequency_type === 'once'
+                ? task.due_date
+                : task.frequency_type === 'interval'
+                  ? getIntervalDueDate(task, completions, addDays(todayStr(), 1))
+                  : null
             const handleRemove = () => {
               if (task.frequency_type === 'once') {
                 removeLastCompletionEver(task.id)
@@ -148,6 +163,7 @@ export function FrameworkScreen({ framework, children }) {
                   done={status.done}
                   overdue={isOverdue(task, completions)}
                   urgent={isWeeklyUrgent(task, completions)}
+                  dueDate={dueDate}
                   isDragging={drag?.id === task.id}
                   onAdd={() => addCompletion(task.id)}
                   onRemove={handleRemove}
@@ -178,6 +194,7 @@ export function FrameworkScreen({ framework, children }) {
                 task={task}
                 date={date}
                 onCheck={() => addCompletion(task.id, date)}
+                onDismiss={() => dismissMiss(task.id, date)}
               />
             ))}
           </div>
